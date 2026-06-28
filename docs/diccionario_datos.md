@@ -1,4 +1,4 @@
-# Diccionario de Datos — SISAV2
+# Diccionario de Datos - SISAV2
 
 Esquema canónico de las 36 columnas presentes en los exports Excel de SISAV2.
 Cada fila describe una columna tal como aparece en los archivos fuente.
@@ -13,8 +13,8 @@ Cada fila describe una columna tal como aparece en los archivos fuente.
 
 | # | Columna | Tipo | Obligatoria | Descripción | Notas |
 |---|---------|------|-------------|-------------|-------|
-| 1 | `codigo_iniciativa` | str | sí | Identificador único de la iniciativa en SISAV2 | — |
-| 2 | `nombre_iniciativa` | str | sí | Nombre descriptivo de la iniciativa | — |
+| 1 | `codigo_iniciativa` | str | sí | Identificador único de la iniciativa en SISAV2 | - |
+| 2 | `nombre_iniciativa` | str | sí | Nombre descriptivo de la iniciativa | - |
 | 3 | ... | ... | ... | ... | ... |
 
 > **TODO**: Completar las 36 columnas a partir de los exports reales una vez disponibles.

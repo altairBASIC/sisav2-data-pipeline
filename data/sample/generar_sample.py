@@ -1,4 +1,4 @@
-"""Genera archivos Excel sintéticos que replican el esquema SISAV2.
+"""Genera archivos Excel sintéticos que replican el esquema canónico SISAV2.
 
 Uso:
     python data/sample/generar_sample.py
@@ -10,47 +10,12 @@ poder ejecutar el pipeline sin datos reales.
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from src.schema import COLUMNAS_CANONICAS
 
 OUTPUT_DIR = Path(__file__).parent
-
-COLUMNAS = [
-    "codigo_iniciativa",
-    "nombre_iniciativa",
-    "estado",
-    "facultad",
-    "carrera",
-    "docente_responsable",
-    "rut_docente",
-    "email_docente",
-    "socio_comunitario",
-    "rut_socio",
-    "tipo_socio",
-    "region",
-    "comuna",
-    "direccion_socio",
-    "telefono_socio",
-    "email_socio",
-    "fecha_inicio",
-    "fecha_termino",
-    "n_estudiantes",
-    "horas_totales",
-    "asignatura",
-    "codigo_asignatura",
-    "objetivos",
-    "descripcion_actividad",
-    "resultados_esperados",
-    "indicador_logro",
-    "ods_asociado",
-    "area_vinculacion",
-    "linea_accion",
-    "territorio",
-    "presupuesto",
-    "fuente_financiamiento",
-    "productos_entregables",
-    "evaluacion_socio",
-    "evaluacion_estudiantes",
-    "observaciones",
-]
 
 
 def generar_archivo(filename: str, n_rows: int = 10, seed: int = 42) -> None:
@@ -58,51 +23,54 @@ def generar_archivo(filename: str, n_rows: int = 10, seed: int = 42) -> None:
     rng = np.random.default_rng(seed)
 
     data = {
-        "codigo_iniciativa": [f"INI-{i:04d}" for i in range(1, n_rows + 1)],
-        "nombre_iniciativa": [f"Iniciativa Ficticia {i}" for i in range(1, n_rows + 1)],
-        "estado": rng.choice(["En ejecución", "Finalizada", "Suspendida"], n_rows).tolist(),
-        "facultad": rng.choice(["Ingeniería", "Educación", "Salud", "Ciencias Sociales"], n_rows).tolist(),
-        "carrera": [f"Carrera {i % 5 + 1}" for i in range(n_rows)],
-        "docente_responsable": [f"Docente Ficticio {i}" for i in range(1, n_rows + 1)],
-        "rut_docente": [f"{rng.integers(10000000, 25000000)}-{rng.integers(0,9)}" for _ in range(n_rows)],
-        "email_docente": [f"docente{i}@universidad.cl" for i in range(1, n_rows + 1)],
-        "socio_comunitario": [f"Organización Ficticia {i}" for i in range(1, n_rows + 1)],
-        "rut_socio": [f"{rng.integers(60000000, 80000000)}-{rng.integers(0,9)}" for _ in range(n_rows)],
-        "tipo_socio": rng.choice(["ONG", "Municipalidad", "Fundación", "Junta de Vecinos"], n_rows).tolist(),
-        "region": rng.choice(["Metropolitana", "Valparaíso", "Biobío"], n_rows).tolist(),
-        "comuna": rng.choice(["Santiago", "Viña del Mar", "Concepción", "Rancagua"], n_rows).tolist(),
-        "direccion_socio": [f"Calle Ficticia {i * 100}" for i in range(1, n_rows + 1)],
-        "telefono_socio": [f"+569{rng.integers(10000000, 99999999)}" for _ in range(n_rows)],
-        "email_socio": [f"socio{i}@org.cl" for i in range(1, n_rows + 1)],
-        "fecha_inicio": pd.date_range("2024-03-01", periods=n_rows, freq="7D").strftime("%Y-%m-%d").tolist(),
-        "fecha_termino": pd.date_range("2024-07-01", periods=n_rows, freq="7D").strftime("%Y-%m-%d").tolist(),
-        "n_estudiantes": rng.integers(5, 40, n_rows).tolist(),
-        "horas_totales": rng.integers(20, 200, n_rows).tolist(),
-        "asignatura": [f"Asignatura {i % 3 + 1}" for i in range(n_rows)],
-        "codigo_asignatura": [f"ASG-{rng.integers(100, 999)}" for _ in range(n_rows)],
-        "objetivos": ["Objetivo de ejemplo para datos sintéticos"] * n_rows,
-        "descripcion_actividad": ["Descripción ficticia de la actividad"] * n_rows,
-        "resultados_esperados": ["Resultado esperado de ejemplo"] * n_rows,
-        "indicador_logro": rng.choice(["Alto", "Medio", "Bajo"], n_rows).tolist(),
-        "ods_asociado": rng.choice(["ODS 4", "ODS 10", "ODS 11", "ODS 17"], n_rows).tolist(),
-        "area_vinculacion": rng.choice(["Educación", "Salud", "Desarrollo local"], n_rows).tolist(),
-        "linea_accion": rng.choice(["Aprendizaje Servicio", "Extensión", "Voluntariado"], n_rows).tolist(),
-        "territorio": rng.choice(["Urbano", "Rural", "Periurbano"], n_rows).tolist(),
-        "presupuesto": rng.integers(100000, 5000000, n_rows).tolist(),
-        "fuente_financiamiento": rng.choice(["Institucional", "Externo", "Mixto"], n_rows).tolist(),
-        "productos_entregables": ["Informe final, material didáctico"] * n_rows,
-        "evaluacion_socio": rng.choice([None, "Satisfactoria", "Regular"], n_rows).tolist(),
-        "evaluacion_estudiantes": rng.choice([None, "4.5", "5.0", "6.2"], n_rows).tolist(),
-        "observaciones": rng.choice([None, "  Espacios extra  ", "", "Sin observaciones"], n_rows).tolist(),
+        "N": list(range(1, n_rows + 1)),
+        "Codigo": [f"INI-{i:04d}" for i in range(1, n_rows + 1)],
+        "PLATAFORMA": ["SISAV2"] * n_rows,
+        "Facultad": rng.choice(["Facultad de Ingeniería", "Facultad de Administración y Economía", "Facultad de Humanidades"], n_rows).tolist(),
+        "UA": [None] * n_rows,
+        "Carrera": [f"Carrera Ficticia {i % 5 + 1}" for i in range(n_rows)],
+        "Nombre de la iniciativa": [f"  Iniciativa Ficticia {i}. " if i % 3 == 0 else f"Iniciativa {i}" for i in range(1, n_rows + 1)],
+        "Dominios disciplinares": rng.choice(["Dominio A.; Dominio B.", "Dominio C", None], n_rows).tolist(),
+        "Área": [None] * n_rows,
+        "Dimensión": [None] * n_rows,
+        "Actividad": rng.choice(["Ciclos de Charlas y/o Talleres.", "Seminarios.", None], n_rows).tolist(),
+        "Competencia Sello": rng.choice(["Tecnología.; Sustentabilidad.", "Responsabilidad Social.", None], n_rows).tolist(),
+        "Contribución Interna": rng.choice(["Contribuir al logro.", None], n_rows).tolist(),
+        "Contribución Externa": rng.choice(["Contribuir a la difusión.", None], n_rows).tolist(),
+        "Competencia genérica": rng.choice(["Competencias genéricas para la ciudadanía\t", "Visión analítica", None], n_rows).tolist(),
+        "Perfil del entorno disciplinar y/o profesional": rng.choice([" Perfil ejemplo ", None], n_rows).tolist(),
+        "PDI": rng.choice(["Fortalecer la Vinculación.", None], n_rows).tolist(),
+        "ODS": rng.choice(["Educación de calidad.; Alianzas.", "Salud y bienestar.", None], n_rows).tolist(),
+        "Objetivo específico electivo": rng.choice(["Objetivo electivo ejemplo", None], n_rows).tolist(),
+        "Estado SISAV": rng.choice(["Finalizado", "Ejecución", "No-Realizada", "Rechazada"], n_rows).tolist(),
+        "Modalidad": [None] * n_rows,
+        "Semestre Ejecución": rng.choice(["Primer Semestre", "Segundo Semestre", "Anual", "3 meses", " 2do Semestre "], n_rows).tolist(),
+        "Cantidad Act Planificadas": rng.choice(["1", "2", "3", None], n_rows).tolist(),
+        "Fecha Inicio": rng.choice(["15/03/2024", "01/08/2024", "10/10/2024", None], n_rows).tolist(),
+        "Fecha Termino": rng.choice(["30/06/2024", "15/12/2024", "20/11/2024", None], n_rows).tolist(),
+        "N estudiantes": [None] * n_rows,
+        "N Docentes": [None] * n_rows,
+        "N Titulados": [None] * n_rows,
+        "N Instituciones del medio externo participantes": [None] * n_rows,
+        "Total": [None] * n_rows,
+        "Grupo de interés": rng.choice([" Grupo ejemplo  ", "Estudiantes", None], n_rows).tolist(),
+        "Área de influencia": rng.choice(["Sociedad Civil.; Empresa.", "Estado y sus Instituciones.", None], n_rows).tolist(),
+        "Tipo de requerimientos": rng.choice(["Servicios de Alimentación.", None], n_rows).tolist(),
+        "Monto": rng.choice([0, 500000, 150000, 0, 1500000], n_rows).tolist(),
+        "Evidencia": rng.choice(["SI", "NO"], n_rows).tolist(),
+        "Comentarios": [None] * n_rows,
     }
 
     df = pd.DataFrame(data)
+    assert list(df.columns) == COLUMNAS_CANONICAS, (
+        f"Columnas no coinciden con esquema canónico: {set(df.columns) ^ set(COLUMNAS_CANONICAS)}"
+    )
     output_path = OUTPUT_DIR / filename
     df.to_excel(output_path, index=False, engine="openpyxl")
     print(f"Generado: {output_path} ({n_rows} filas, {len(df.columns)} columnas)")
 
 
 if __name__ == "__main__":
-    generar_archivo("ApS_2024_001_1S.xlsx", n_rows=10, seed=42)
-    generar_archivo("ApS_2024_002_2S.xlsx", n_rows=8, seed=99)
+    generar_archivo("PRE_GRADO__conv90__Convocatoria_EXTENSION_2024.xlsx", n_rows=10, seed=42)
+    generar_archivo("PRE_GRADO__conv91__Convocatoria_Proyecto_VcM_1er_Semestre_2024_VEDP.xlsx", n_rows=8, seed=99)
     print("Datos sintéticos generados exitosamente.")

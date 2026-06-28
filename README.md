@@ -1,104 +1,133 @@
 # SISAV2 Data Pipeline
 
-Pipeline de consolidación y limpieza de exports Excel del sistema SISAV2 (iniciativas de Vinculación con el Medio) hacia tablas analíticas que alimentan un dashboard institucional.
+Pipeline de ingenieria de datos que consolida y limpia las planillas de
+iniciativas de Vinculacion con el Medio (VcM) exportadas desde SISAV2, hacia
+una tabla analitica unica que alimenta un dashboard de gestion institucional.
 
 ## Problema que resuelve
 
-Cada convocatoria de SISAV2 se exporta como un archivo Excel independiente. Comparten un esquema de 36 columnas pero difieren en qué campos vienen poblados según año e instrumento. Los metadatos clave (instrumento, año, n° de convocatoria, semestre) están codificados en el nombre del archivo, no como columnas. Este pipeline:
+Las iniciativas de VcM se registran en planillas Excel que varian en formato
+segun el año y el instrumento. A lo largo del tiempo el formulario fue
+cambiando: distinto numero de columnas, distintos nombres, distintas hojas, y
+campos que aparecen o desaparecen entre convocatorias. Hacer reporteria sobre
+esa fuente heterogenea, a mano, es lento y propenso a error.
 
-1. Extrae metadatos del nombre de archivo y los incorpora como columnas.
-2. Aplica reglas de limpieza documentadas y trazables.
-3. Genera un audit log que registra cada modificación atómica.
-4. Produce tablas limpias consolidadas listas para análisis.
+Este pipeline absorbe esa heterogeneidad y entrega una tabla consolidada,
+limpia y trazable, con las columnas-indicador que los graficos del dashboard
+necesitan. El equipo de visualizacion consume un unico archivo en lugar de
+lidiar con las planillas originales.
+
+## Que hace
+
+1. **Ingesta**: lee los Excel de cada convocatoria, valida su estructura y
+   extrae metadatos (instrumento, año, convocatoria, semestre) del nombre del
+   archivo.
+2. **Consolidacion**: unifica las distintas familias de formato (2022-2025) en
+   un esquema canonico de columnas-indicador, mapeando cada formato a un
+   conjunto comun de campos.
+3. **Limpieza**: aplica reglas documentadas (normalizacion de espacios y
+   separadores, conversion de tipos, separacion de conceptos mezclados), cada
+   una con un identificador estable.
+4. **Auditoria**: registra cada modificacion atomica (que dato, valor original,
+   valor resultante, regla aplicada, archivo de origen) para trazabilidad
+   completa.
+5. **Exportacion**: produce el consolidado en CSV y Parquet para consumo del
+   equipo de visualizacion.
+
+## Trazabilidad
+
+El principio rector es que toda transformacion sea auditable. Si aparece un dato
+sospechoso en el dashboard, debe poder rastrearse hasta su origen y conocerse
+que regla lo modifico y por que. Cada regla de limpieza tiene un ID estable
+(R-001, R-002, ...) presente en el codigo, en el audit log y en
+`docs/reglas_transformacion.md`.
 
 ## Estructura del repositorio
 
 ```
 sisav2-data-pipeline/
 ├── data/
-│   ├── raw/            # Exports Excel reales (IGNORADOS por .gitignore)
-│   ├── sample/         # Datos sintéticos para desarrollo y CI
-│   ├── staging/        # Capa intermedia post-ingesta (ignorada)
-│   └── clean/          # Tablas finales + audit log (ignoradas)
+│   ├── raw/        # Planillas reales (IGNORADO por Git, confidencial)
+│   ├── sample/     # Datos sinteticos para correr sin datos reales
+│   ├── staging/    # Capa intermedia (ignorada)
+│   └── clean/      # Consolidado y audit log (ignorado; se regenera)
 ├── src/
-│   ├── __init__.py
-│   ├── ingest.py       # Lectura de Excel y extracción de metadatos del filename
-│   ├── transform.py    # Reglas de limpieza (cada una con ID estable R-XXX)
-│   ├── audit.py        # Función central de modificación-con-registro
-│   ├── schema.py       # Definición del esquema esperado (36 columnas)
-│   ├── utils.py        # Helpers: paths, logging, versión del pipeline
-│   └── main.py         # Orquestador: ingest → transform → export
-├── notebooks/          # Exploración y validación ad-hoc
-├── docs/
-│   ├── diccionario_datos.md       # Esquema de 36 columnas documentado
-│   └── reglas_transformacion.md   # Catálogo de reglas R-XXX
+│   ├── ingest.py       # Lectura de Excel y metadatos del nombre
+│   ├── transform.py    # Reglas de limpieza (R-XXX)
+│   ├── audit.py        # Modificacion-con-registro
+│   ├── schema.py       # Esquema canonico
+│   ├── profiling.py    # Perfilado de calidad
+│   └── main.py         # Orquestador
+├── notebooks/      # Exploracion, perfilado, validacion, consolidacion
+├── docs/           # Diccionarios, reglas, alcance, mapeo de esquemas
 ├── .gitignore
-├── .python-version    # Versión de Python del proyecto (>= 3.11)
 ├── LICENSE
 ├── README.md
 └── requirements.txt
 ```
 
-## Inicio rápido
+## Notebooks
 
-**Requisito**: Python >= 3.11 (ver `.python-version`).
+El analisis esta documentado de forma reproducible:
+
+- `01_perfilado` - calidad de datos del formato base
+- `02_comparacion_formatos` - formato legacy vs. expandido
+- `03_exploracion_planillas_origen` - caracterizacion de las planillas fuente
+- `04_consolidado_indicadores` - consolidacion y limpieza de las tres familias
+- `05_validacion_y_resumen` - validacion final y resumen ejecutivo
+
+Los notebooks se versionan **sin output** para no exponer datos reales en el
+historial. Limpiar antes de comitear:
 
 ```bash
-# 1. Clonar
+jupyter nbconvert --clear-output --inplace notebooks/*.ipynb
+```
+
+## Inicio rapido
+
+Requisito: Python 3.11 o superior.
+
+```bash
 git clone https://github.com/altairBASIC/sisav2-data-pipeline.git
 cd sisav2-data-pipeline
 
-# 2. Crear entorno virtual
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Ejecutar con datos de ejemplo
+# Ejecutar sobre datos sinteticos de ejemplo
 python -m src.main --input data/sample/ --output data/clean/
 ```
 
-Para usar datos reales, colocar los exports `.xlsx` en `data/raw/` y cambiar `--input data/raw/`.
+Para usar datos reales, colocar las planillas en `data/raw/` y cambiar
+`--input`. Los datos reales nunca se versionan.
 
-## Trazabilidad y linaje
+## Manejo de datos confidenciales
 
-Cada fila en las tablas limpias incluye:
+Las planillas reales son confidenciales y quedan fuera del control de versiones
+via `.gitignore`. El repositorio incluye datos **sinteticos** (generados, no
+derivados de datos reales) que replican el esquema y reproducen a proposito la
+suciedad observada, para poder ejecutar y probar el pipeline sin acceso a la
+fuente real.
 
-| Columna | Descripción |
-|---------|-------------|
-| `_archivo_origen` | Nombre del archivo Excel fuente |
-| `_convocatoria` | Identificador de convocatoria (extraído del filename) |
-| `_fecha_proceso` | Timestamp ISO 8601 de la corrida |
-| `_version_pipeline` | Tag semántico del pipeline (e.g. `0.1.0`) |
+## El consolidado
 
-El **audit log** (`data/clean/audit_log.csv`) registra cada modificación atómica:
-
-| Columna | Descripción |
-|---------|-------------|
-| `codigo_iniciativa` | Identificador de la iniciativa modificada |
-| `columna` | Columna afectada |
-| `valor_original` | Valor antes de la transformación |
-| `valor_resultante` | Valor después de la transformación |
-| `regla_id` | ID estable de la regla (e.g. `R-001`) |
-| `archivo_origen` | Archivo del que proviene el registro |
-
-El audit log se regenera completo en cada corrida; el historial lo provee Git sobre el código fuente.
-
-## Convenciones
-
-- **Reglas de limpieza**: cada regla tiene un ID estable `R-XXX` presente en `src/transform.py`, en el audit log y en `docs/reglas_transformacion.md`.
-- **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`).
-- **Versionado**: SemVer en `src/utils.py`.
+La salida principal es una tabla unica de iniciativas (2022-2025) con
+columnas-indicador estandarizadas. Su documentacion de consumo - que columna es
+que, cuales son multivalor y con que separador, desde que año hay datos - esta
+en `docs/diccionario_consolidado.md`. Algunas columnas tienen cobertura parcial
+por año: esto refleja como evoluciono el formulario de origen, no un error del
+pipeline.
 
 ## Roadmap
 
-Los siguientes ítems están planificados pero **no implementados**:
-
-1. **Containerización OCI** — Containerfile compatible con Podman y Docker. Los datos se montarán como volumen (`-v ./data/raw:/data/raw:ro`); nunca dentro de la imagen. La estructura de carpetas ya soporta esta separación.
-
-2. **Conector de base de datos SISAV2** — Adaptación de `src/ingest.py` para leer directamente desde una instancia local de SISAV2 (PostgreSQL/SQL Server) cuando esté disponible, además de los Excel. La interfaz de ingesta está diseñada para que añadir un nuevo origen sea un cambio aditivo, sin refactorizar el pipeline.
+- **Migrar la consolidacion a `src/`**: la logica de consolidacion vive hoy en
+  notebook; migrarla a un modulo reproducible con pruebas.
+- **Containerizacion OCI**: `Containerfile` compatible con Podman y Docker, con
+  datos montados como volumen, nunca dentro de la imagen.
+- **Conector a fuente en vivo**: adaptar la ingesta para leer desde una
+  instancia de SISAV2 cuando este disponible, ademas de los Excel.
 
 ## Licencia
 
-MIT — ver [LICENSE](LICENSE).
+MIT - ver [LICENSE](LICENSE).

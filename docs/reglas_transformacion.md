@@ -1,10 +1,15 @@
 # Reglas de Transformación - SISAV2 Data Pipeline
 
-Catálogo de todas las reglas de limpieza aplicadas por el pipeline.
+Catalogo de todas las reglas de limpieza aplicadas por el pipeline.
 Cada regla tiene un ID estable que aparece en tres lugares:
-1. Este documento (explicación y justificación).
-2. `src/transform.py` (implementación).
+1. Este documento (explicacion y justificacion).
+2. `src/transform.py` (implementacion).
 3. Audit log de salida (trazabilidad por registro).
+
+> **Nota sobre numeracion**: los IDs son estables, no contiguos y nunca se
+> reusan. R-006, R-007 y R-008 fueron evaluadas durante el diseño y descartadas
+> (documentadas abajo). El hueco entre R-005 y R-009 es intencional: renumerar
+> romperia la trazabilidad con audit logs ya generados.
 
 ## Estructura de cada regla
 

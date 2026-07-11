@@ -20,6 +20,7 @@ dist/
 
 # === Entornos virtuales ===
 .venv/
+.venv_wsl_backup/
 venv/
 ENV/
 

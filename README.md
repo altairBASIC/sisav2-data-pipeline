@@ -1,132 +1,141 @@
 # SISAV2 Data Pipeline
 
-Pipeline de ingenieria de datos que consolida y limpia las planillas de
-iniciativas de Vinculacion con el Medio (VcM) exportadas desde SISAV2, hacia
-una tabla analitica unica que alimenta un dashboard de gestion institucional.
+Pipeline de datos para el dashboard de Vinculacion con el Medio (VcM) de la
+UTEM. Consolida las planillas fuente exportadas desde SISAV2 en datasets limpios
+listos para visualizacion, con esquema unificado y documentacion de que se puede
+calcular hoy con datos reales y que no.
 
-## Problema que resuelve
+## Que resuelve
 
-Las iniciativas de VcM se registran en planillas Excel que varian en formato
-segun el año y el instrumento. A lo largo del tiempo el formulario fue
-cambiando: distinto numero de columnas, distintos nombres, distintas hojas, y
-campos que aparecen o desaparecen entre convocatorias. Hacer reporteria sobre
-esa fuente heterogenea, a mano, es lento y propenso a error.
+Las iniciativas de VcM se registran en planillas Excel que cambian de formato
+segun el anio y el instrumento: distinto numero de columnas, nombres distintos y
+campos que aparecen o desaparecen entre convocatorias. Este repositorio absorbe
+esa heterogeneidad y entrega dos datasets intercambiables para el dashboard,
+mas el analisis de cobertura de los KPIs oficiales solicitados por VcM.
 
-Este pipeline absorbe esa heterogeneidad y entrega una tabla consolidada,
-limpia y trazable, con las columnas-indicador que los graficos del dashboard
-necesitan. El equipo de visualizacion consume un unico archivo en lugar de
-lidiar con las planillas originales.
+## Flujo de trabajo (notebooks)
 
-## Que hace
+El trabajo reproducible esta en `notebooks/`, en este orden:
 
-1. **Ingesta**: lee los Excel de cada convocatoria, valida su estructura y
-   extrae metadatos (instrumento, año, convocatoria, semestre) del nombre del
-   archivo.
-2. **Consolidacion**: unifica las distintas familias de formato (2022-2025) en
-   un esquema canonico de columnas-indicador, mapeando cada formato a un
-   conjunto comun de campos.
-3. **Limpieza**: aplica reglas documentadas (normalizacion de espacios y
-   separadores, conversion de tipos, separacion de conceptos mezclados), cada
-   una con un identificador estable.
-4. **Auditoria**: registra cada modificacion atomica (que dato, valor original,
-   valor resultante, regla aplicada, archivo de origen) para trazabilidad
-   completa.
-5. **Exportacion**: produce el consolidado en CSV y Parquet para consumo del
-   equipo de visualizacion.
+| Notebook | Que hace |
+|----------|----------|
+| `01_perfilado` | Perfilado de calidad del formato base. |
+| `02_comparacion_formatos` | Compara formato legacy vs expandido. |
+| `03_exploracion_planillas_origen` | Caracteriza las planillas fuente por convocatoria. |
+| `04_consolidado_indicadores` | Primer consolidado y limpieza de las familias de formato. |
+| `05_validacion_y_resumen` | Validacion del consolidado y resumen ejecutivo. |
+| `06_viabilidad_columnas` | Diagnostico de que columnas pedidas por el dashboard existen (o no) en la fuente. |
+| `07_extraccion_final` | Extrae dos tablas reales limpias: participantes 2024-2025 e historico 2022-2025. |
+| `08_datasets_dashboard` | Arma el esquema unificado y genera `dashboard_real` + `dashboard_sintetico`. |
+| `09_comparacion_real_vs_sintetico` | Compara cobertura y similitud estadistica entre ambos datasets. |
+| `10_kpis_dashboard` | Visualiza los KPIs oficiales: que alimenta el real hoy y que solo el sintetico puede demostrar. |
 
-## Trazabilidad
+Los notebooks se versionan **sin output** para no exponer datos reales en el
+historial. Antes de commitear:
 
-El principio rector es que toda transformacion sea auditable. Si aparece un dato
-sospechoso en el dashboard, debe poder rastrearse hasta su origen y conocerse
-que regla lo modifico y por que. Cada regla de limpieza tiene un ID estable
-(R-001, R-002, ...) presente en el codigo, en el audit log y en
-`docs/reglas_transformacion.md`.
+```bash
+jupyter nbconvert --clear-output --inplace notebooks/*.ipynb
+```
+
+Documentacion del esquema: `docs/esquema_dashboard.md`.
+
+## Datasets finales
+
+Ambos salen del notebook 08 con **esquema identico de 39 columnas** (mismo
+orden), pensados para ser intercambiables en el dashboard:
+
+| Dataset | Ubicacion | Proposito |
+|---------|-----------|-----------|
+| **Real** | `data/clean/dashboard_real.{csv,parquet}` | Datos verdaderos de SISAV2 (2022-2025). Las columnas que la fuente no captura estan presentes pero vacias (NaN). |
+| **Sintetico** | `data/synthetic/dashboard_sintetico.{csv,parquet}` | Demostrativo: todas las columnas pobladas, estadisticamente calcado del real (proporciones y distribuciones). Ficticio en el detalle. |
+
+La columna `_origen_dato` (`real` / `sintetico`) identifica cada archivo. El
+sintetico es solo para demostrar el dashboard completo; **no** debe usarse para
+reporteria, informes institucionales ni acreditacion.
+
+## Manejo de datos confidenciales
+
+Los datos reales de VcM (`data/raw/`, `data/staging/`, `data/clean/`) quedan
+**fuera del control de versiones** via `.gitignore`.
+
+El dataset sintetico en `data/synthetic/` **si se versiona**: es inventado, no
+confidencial, y permite clonar el repositorio y correr los notebooks 09-10 (y
+probar el dashboard) sin tener acceso a las planillas reales.
+
+## Estado de los KPIs
+
+El repositorio incluye el analisis de que indicadores oficiales de VcM son
+calculables con datos reales hoy y cuales requieren datos que VcM aun no
+captura. La foto completa, grafico por grafico, esta en el notebook
+`10_kpis_dashboard`.
+
+En resumen:
+
+- Varios KPIs de iniciativas, facultades, instrumentos, participantes
+  desagregados (desde 2024) y competencias sello si se pueden armar con el
+  dataset real.
+- Otros (empleadores, desglose por rol, territorio RM, ciclo,
+  internacionalizacion, etc.) solo se demuestran con el sintetico, porque la
+  fuente real no los registra.
+
+## Limitaciones documentadas
+
+- **Sin fuente real**: empleadores, roles (charlista / expositor / asistente) y
+  territorio RM (comuna), entre otras columnas pedidas al dashboard.
+- **Participantes desagregados** (estudiantes, academicos, titulados,
+  organizaciones): solo desde 2024; en 2022-2023 esas celdas quedan vacias por
+  diseno.
+- **KPI I19** (actividades ejecutadas / planificadas): calculable con datos
+  reales solo en 2022-2023; desde 2024 la fuente dejo de capturar ejecutadas.
+
+Detalle del esquema y de la cobertura por columna: `docs/esquema_dashboard.md`.
 
 ## Estructura del repositorio
 
 ```
 sisav2-data-pipeline/
 ├── data/
-│   ├── raw/        # Planillas reales (IGNORADO por Git, confidencial)
-│   ├── sample/     # Datos sinteticos para correr sin datos reales
-│   ├── staging/    # Capa intermedia (ignorada)
-│   └── clean/      # Consolidado y audit log (ignorado; se regenera)
-├── src/
-│   ├── ingest.py       # Lectura de Excel y metadatos del nombre
-│   ├── transform.py    # Reglas de limpieza (R-XXX)
-│   ├── audit.py        # Modificacion-con-registro
-│   ├── schema.py       # Esquema canonico
-│   ├── profiling.py    # Perfilado de calidad
-│   └── main.py         # Orquestador
-├── notebooks/      # Exploracion, perfilado, validacion, consolidacion
-├── docs/           # Diccionarios, reglas, alcance, mapeo de esquemas
+│   ├── raw/         # Planillas reales (gitignoreado)
+│   ├── staging/     # Capa intermedia (gitignoreado)
+│   ├── clean/       # Datasets reales limpios (gitignoreado)
+│   └── synthetic/   # Dataset sintetico de demostracion (versionado)
+├── notebooks/       # Flujo 01-10
+├── docs/            # Esquema, diccionarios, reglas, alcance
 ├── .gitignore
 ├── LICENSE
 ├── README.md
 └── requirements.txt
 ```
 
-## Notebooks
-
-El analisis esta documentado de forma reproducible:
-
-- `01_perfilado` - calidad de datos del formato base
-- `02_comparacion_formatos` - formato legacy vs. expandido
-- `03_exploracion_planillas_origen` - caracterizacion de las planillas fuente
-- `04_consolidado_indicadores` - consolidacion y limpieza de las tres familias
-- `05_validacion_y_resumen` - validacion final y resumen ejecutivo
-
-Los notebooks se versionan **sin output** para no exponer datos reales en el
-historial. Limpiar antes de comitear:
-
-```bash
-jupyter nbconvert --clear-output --inplace notebooks/*.ipynb
-```
-
 ## Inicio rapido
 
-Requisito: Python 3.11 o superior.
+Requisito: Python 3.10 o superior.
 
 ```bash
 git clone https://github.com/altairBASIC/sisav2-data-pipeline.git
 cd sisav2-data-pipeline
 
-python3 -m venv .venv
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux / macOS:
 source .venv/bin/activate
-pip install -r requirements.txt
 
-# Ejecutar sobre datos sinteticos de ejemplo
-python -m src.main --input data/sample/ --output data/clean/
+pip install -r requirements.txt
 ```
 
-Para usar datos reales, colocar las planillas en `data/raw/` y cambiar
-`--input`. Los datos reales nunca se versionan.
+Para explorar sin datos reales, abrir los notebooks 09 y 10: leen
+`data/synthetic/dashboard_sintetico`, que si esta versionado.
 
-## Manejo de datos confidenciales
+Para regenerar los datasets con datos reales, colocar las planillas en
+`data/raw/` y ejecutar el flujo desde el notebook 07 (extraccion) y el 08
+(esquema unificado). Los artefactos reales se escriben en `data/clean/` y no se
+suben al repositorio.
 
-Las planillas reales son confidenciales y quedan fuera del control de versiones
-via `.gitignore`. El repositorio incluye datos **sinteticos** (generados, no
-derivados de datos reales) que replican el esquema y reproducen a proposito la
-suciedad observada, para poder ejecutar y probar el pipeline sin acceso a la
-fuente real.
+## Autores
 
-## El consolidado
-
-La salida principal es una tabla unica de iniciativas (2022-2025) con
-columnas-indicador estandarizadas. Su documentacion de consumo - que columna es
-que, cuales son multivalor y con que separador, desde que año hay datos - esta
-en `docs/diccionario_consolidado.md`. Algunas columnas tienen cobertura parcial
-por año: esto refleja como evoluciono el formulario de origen, no un error del
-pipeline.
-
-## Roadmap
-
-- **Migrar la consolidacion a `src/`**: la logica de consolidacion vive hoy en
-  notebook; migrarla a un modulo reproducible con pruebas.
-- **Containerizacion OCI**: `Containerfile` compatible con Podman y Docker, con
-  datos montados como volumen, nunca dentro de la imagen.
-- **Conector a fuente en vivo**: adaptar la ingesta para leer desde una
-  instancia de SISAV2 cuando este disponible, ademas de los Excel.
+Ignacio Ramirez y Claudia Cancino.  
+Institucion: Universidad Tecnologica Metropolitana (UTEM).
 
 ## Licencia
 

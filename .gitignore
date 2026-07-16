@@ -35,5 +35,8 @@ ENV/
 # === Jupyter checkpoints ===
 .ipynb_checkpoints/
 
+# === Informe interno (no versionar) ===
+Informe/
+
 # === Logs locales (el audit log versionado va en data/clean/) ===
 *.log

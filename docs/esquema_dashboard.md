@@ -1,8 +1,13 @@
 # Esquema unificado del dashboard VcM (real y sintetico)
 
+> **Nota de vigencia**: la referencia oficial y definitiva para el equipo de
+> visualizacion y la contraparte es el **Diccionario de datos**
+> (`diccionario_datos.md`). Este documento se conserva como registro interno de
+> ingenieria del esquema; ante cualquier diferencia, prevalece el diccionario.
+
 Referencia de los dos datasets intercambiables generados por
 `notebooks/08_datasets_dashboard.ipynb`. Ambos tienen **exactamente las mismas
-39 columnas, en el mismo orden** (el notebook lo verifica con un `assert`):
+42 columnas, en el mismo orden** (el notebook lo verifica con un `assert`):
 
 | Dataset | Ubicacion | Contenido |
 |---------|-----------|-----------|
@@ -26,8 +31,8 @@ son genericos y cada fila es una combinacion aleatoria. Es verosimil en agregado
 Las columnas vacias del dataset real no son un error: marcan datos que el
 instrumento de VcM **no captura hoy** y que deberia empezar a registrar si la
 contraparte quiere esas metricas con datos verdaderos (empleadores, desglose por
-rol, internacionalizacion, comuna, semestre, ciclo, y actividades ejecutadas,
-que existia en 2022-2023 y dejo de capturarse desde 2024).
+rol, internacionalizacion, comuna, ciclo, y actividades ejecutadas, que existia
+en 2022-2023 y dejo de capturarse desde 2024).
 
 ## Esquema completo
 
@@ -44,7 +49,8 @@ anio), **Vacia** = presente en el esquema pero sin fuente (NaN en todas las fila
 | carrera | str | Real (2022) | Carrera asociada. Coherente con la facultad tambien en el sintetico. |
 | instrumento | str | Real (2022) | Instrumento de VcM (EXTENSION, VEDP, VT, FCR, UTG, CENTRALIZADAS). |
 | anio | int | Real (2022) | Anio de la convocatoria (2022 a 2025). |
-| semestre | str | Vacia | Semestre de ejecucion (1S/2S). No esta en las tablas limpias reales. |
+| semestre | str | Real (2022, 99-100%) | Semestre de ejecucion, filtro obligatorio. Normalizado desde la fuente (`Semestre Ejecucion` PRIMERO/SEGUNDO/ANUAL o `Semestre de ejecucion de la iniciativa`) a 1S / 2S / Anual. Se excluye el semestre de la catedra asociada, que es otro concepto. |
+| modalidad | str | Real (2022, 99-100%) | Modalidad de ejecucion, filtro obligatorio. Normalizada desde variantes de la fuente (PRESENCIAL/ONLINE/HIBRIDO vs Presencial/Online/Hibrida) a Presencial / Online / Hibrida. |
 | estado_sisav | str | Real (2022) | Estado en SISAV (vocabulario heterogeneo entre formatos). |
 
 ### Participantes desagregados (conteos float, NaN = sin dato, nunca 0 por defecto)
@@ -102,6 +108,21 @@ total de su categoria (verificado con assert).
 | cantidad_act_planificadas | float | Real (2022, 96-98%) | Actividades planificadas, recuperada de la fuente en todos los anios. Celdas sucias tipo `2; 3` se resuelven tomando el primer numero. |
 | cantidad_act_ejecutadas | float | Real (solo 2022-2023, 78-90%) | Actividades ejecutadas. La fuente dejo de capturarla desde 2024: NaN en 2024-2025. El KPI I19 real (ejecutadas/planificadas) es calculable solo para 2022-2023. En el sintetico esta poblada en todos los anios y nunca supera a planificadas (verificado con assert). |
 
+### Tabla de incidencias (Grupo 1)
+
+Casos que requieren atencion antes de enviarse al Front-End. Se calculan con la
+**misma regla en ambos datasets** (no se generan aleatoriamente en el sintetico).
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| requiere_revision | bool | True si la iniciativa tiene evidencia faltante (`evidencia` = NO o nula), no tiene codigo, o no tiene facultad. False en el resto (siempre poblada). |
+| motivo_revision | str | Razones legibles concatenadas con `; ` ("sin evidencia", "sin codigo", "sin facultad"). Cadena vacia donde no hay incidencia. |
+
+En el dataset real quedan marcadas 183 de 826 iniciativas (22.2%): 135 sin
+evidencia, 54 sin codigo (instrumento CENTRALIZADAS) y 3 sin facultad. En el
+sintetico, 117 (14.2%), todas por evidencia NO (codigo y facultad siempre
+existen en el demo).
+
 ### Linaje
 
 | Columna | Tipo | Descripcion |
@@ -127,6 +148,9 @@ total de su categoria (verificado con assert).
   organizaciones (orden de magnitud analogo, supuesto documentado).
 - **Evidencia**: SI/NO con la proporcion real observada de SI (~85%), no 50/50
   arbitrario.
+- **Semestre y modalidad**: muestreados con las proporciones reales observadas.
+- **Incidencias** (`requiere_revision` / `motivo_revision`): calculadas con la
+  misma regla que en el real, no generadas al azar.
 - **Seed fijo 42**: la generacion es reproducible.
 
 ## Verificaciones que hace el notebook (fallan si no se cumplen)

@@ -37,12 +37,16 @@ historial. Antes de commitear:
 jupyter nbconvert --clear-output --inplace notebooks/*.ipynb
 ```
 
-Documentacion del esquema: `docs/esquema_dashboard.md`.
+La referencia oficial del esquema para consumir los datasets es
+`docs/diccionario_datos.md` (diccionario de datos definitivo).
 
 ## Datasets finales
 
-Ambos salen del notebook 08 con **esquema identico de 39 columnas** (mismo
-orden), pensados para ser intercambiables en el dashboard:
+Ambos salen del notebook 08 con **esquema identico de 42 columnas** (mismo
+orden), pensados para ser intercambiables en el dashboard. Incluyen los
+filtros obligatorios (instrumento, facultad, carrera, semestre, estado,
+modalidad, evidencia) y la tabla de incidencias (`requiere_revision` /
+`motivo_revision`) para derivar casos al Front-End:
 
 | Dataset | Ubicacion | Proposito |
 |---------|-----------|-----------|
@@ -88,7 +92,9 @@ En resumen:
 - **KPI I19** (actividades ejecutadas / planificadas): calculable con datos
   reales solo en 2022-2023; desde 2024 la fuente dejo de capturar ejecutadas.
 
-Detalle del esquema y de la cobertura por columna: `docs/esquema_dashboard.md`.
+Detalle del esquema, cobertura por columna, guia de uso y limitaciones:
+`docs/diccionario_datos.md`. Catalogo de reglas de limpieza (R-001 a R-021):
+`docs/reglas_transformacion.md`.
 
 ## Estructura del repositorio
 
@@ -124,8 +130,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Para explorar sin datos reales, abrir los notebooks 09 y 10: leen
-`data/synthetic/dashboard_sintetico`, que si esta versionado.
+Para explorar sin datos reales, consumir directamente
+`data/synthetic/dashboard_sintetico.csv` o `.parquet`, que si esta versionado,
+junto con el diccionario `docs/diccionario_datos.md`. Nota: los notebooks 09 y
+10 comparan real vs sintetico, por lo que requieren ambos datasets y no corren
+sin los datos reales.
 
 Para regenerar los datasets con datos reales, colocar las planillas en
 `data/raw/` y ejecutar el flujo desde el notebook 07 (extraccion) y el 08

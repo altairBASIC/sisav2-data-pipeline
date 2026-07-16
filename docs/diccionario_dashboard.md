@@ -1,5 +1,11 @@
 # Diccionario del Dashboard VcM
 
+> **Nota de vigencia**: este documento describe las **tablas intermedias** de
+> extraccion (participantes 2024-2025 e historico 2022-2025). La referencia
+> oficial para consumir los datasets finales `dashboard_real` y
+> `dashboard_sintetico` es el **Diccionario de datos** (`diccionario_datos.md`);
+> ante cualquier diferencia, prevalece ese documento.
+
 Referencia para el equipo de visualizacion. Describe las dos tablas limpias
 generadas por `notebooks/07_extraccion_final.ipynb` a partir de las planillas
 fuente de SISAV2, siguiendo el diagnostico de viabilidad de
@@ -32,6 +38,8 @@ desagregados). Fuente: `data/clean/dashboard_participantes_2024_2025.{csv,parque
 | instrumento | str | No | - | 2024 | Instrumento de VcM derivado del archivo fuente (EXTENSION, VEDP, VT, UTG, CENTRALIZADAS). |
 | anio | int | No | - | 2024 | Anio de la convocatoria. |
 | estado_sisav | str | No | - | 2024 | Estado en SISAV. Vacio en CENTRALIZADAS 2025 (el formulario no incluye la columna). |
+| modalidad | str | No | - | 2024 | Modalidad de ejecucion normalizada (Presencial / Online / Hibrida). Filtro obligatorio del dashboard. |
+| semestre | str | No | - | 2024 | Semestre de ejecucion normalizado (1S / 2S / Anual). Filtro obligatorio. No confundir con el semestre de la catedra asociada. |
 | n_estudiantes | float | No | - | 2024 | Numero de estudiantes participantes. En 2025 suma los conteos por sexo (M/F/Otro). NaN si no hay dato. |
 | n_academicos_docentes | float | No | - | 2024 | Numero de academicos/docentes participantes. En 2025 suma M/F/Otro. No incluye funcionarios. NaN si no hay dato. |
 | n_titulados | float | No | - | 2024 | Numero de titulados participantes. En 2025 suma M/F/Otro. NaN si no hay dato. |
@@ -61,6 +69,8 @@ desagregados). Fuente: `data/clean/dashboard_participantes_2024_2025.{csv,parque
 | cantidad_act_planificadas | 97.7 | 98.3 |
 | cantidad_act_ejecutadas | 0.0 | 0.0 |
 | evidencia | 96.0 | 100.0 |
+| modalidad | 98.9 | 99.4 |
+| semestre | 98.9 | 100.0 |
 | codigo | 96.0 | 87.0 |
 | estado_sisav | 98.3 | 87.0 |
 
@@ -80,6 +90,8 @@ todo el periodo. Fuente: `data/clean/dashboard_historico_2022_2025.{csv,parquet}
 | instrumento | str | No | - | 2022 | Instrumento de VcM derivado del archivo fuente. |
 | anio | int | No | - | 2022 | Anio de la convocatoria. |
 | estado_sisav | str | No | - | 2022 | Estado en SISAV. |
+| modalidad | str | No | - | 2022 | Modalidad de ejecucion normalizada (Presencial / Online / Hibrida). Filtro obligatorio del dashboard. |
+| semestre | str | No | - | 2022 | Semestre de ejecucion normalizado (1S / 2S / Anual). Filtro obligatorio. |
 | competencia_sello | str | Si | `; ` | 2022 | Competencias sello. En 2022-2023 proviene del campo `Sello Institucional` (unica competencia registrada en ese formato; no hay competencia generica). |
 | total_participantes | float | No | - | 2022 | Total agregado de personas por iniciativa. En 2022-2023 es `Total Asistentes`; en 2024-2025 es el total agregado de participantes. Es un headcount agregado, NO una desagregacion. Cobertura baja en 2022 (~67%). NaN si no hay dato. |
 | cantidad_act_planificadas | float | No | - | 2022 | Actividades planificadas (96-99% en todos los anios). |
@@ -99,6 +111,8 @@ todo el periodo. Fuente: `data/clean/dashboard_historico_2022_2025.{csv,parquet}
 | cantidad_act_planificadas | 98.6 | 96.2 | 97.7 | 98.3 |
 | cantidad_act_ejecutadas | 78.4 | 89.8 | 0.0 | 0.0 |
 | evidencia | 97.3 | 98.7 | 96.0 | 100.0 |
+| modalidad | 100.0 | 100.0 | 98.9 | 99.4 |
+| semestre | 100.0 | 100.0 | 98.9 | 100.0 |
 
 ---
 

@@ -3,8 +3,8 @@
 Catalogo de todas las reglas de limpieza aplicadas por el pipeline.
 Cada regla tiene un ID estable que aparece en tres lugares:
 1. Este documento (explicacion y justificacion).
-2. `src/transform.py` (implementacion).
-3. Audit log de salida (trazabilidad por registro).
+2. La implementacion del proceso de limpieza correspondiente.
+3. Audit log de salida (trazabilidad por registro), donde aplica.
 
 > **Nota sobre numeracion**: los IDs son estables, no contiguos y nunca se
 > reusan. R-006, R-007 y R-008 fueron evaluadas durante el diseño y descartadas
@@ -121,7 +121,7 @@ Cada regla tiene un ID estable que aparece en tres lugares:
 | **Nombre** | Separacion area/dominios |
 | **Columnas afectadas** | dominios_disciplinares, area_generica (nueva) |
 | **Descripcion** | En planillas 2022-2023 (Familia A), la columna "Area" contiene categorias genericas de VcM (RELACION_CON_EL_ENTORNO, EXTENSION, TITULADOS, DIFUSION_Y_DIVULGACION_DE_LA_INVESTIGACION), no dominios disciplinares. Se mapea a `area_generica` en vez de `dominios_disciplinares`. Dominios queda en NaN para 2022-2023. |
-| **Justificacion** | Validado en notebook 05: los valores de 2022 son conceptualmente distintos de los dominios especificos que aparecen desde 2024. Mezclarlos produce un campo semanticamente incoherente. |
+| **Justificacion** | Validado en la exploracion de las planillas origen: los valores de 2022 son conceptualmente distintos de los dominios especificos que aparecen desde 2024. Mezclarlos produce un campo semanticamente incoherente. |
 | **Tipo** | correccion de mapeo |
 | **Estado** | implementada |
 
@@ -165,6 +165,102 @@ Cada regla tiene un ID estable que aparece en tres lugares:
 | **Descripcion** | Reemplaza el patron ` / ` (espacio-barra-espacio) por `; ` en campos multivalor. No toca barras sin espacios (como "y/o" o fechas) que son parte del texto. Tras el reemplazo, re-aplica strip de items y elimina items vacios. |
 | **Justificacion** | Algunos archivos fuente (especialmente VEDP 2024) usan ` / ` como separador entre dominios disciplinares. Unificarlo a `; ` garantiza un split confiable para el equipo de visualizacion. |
 | **Tipo** | normalizacion |
+| **Estado** | implementada |
+
+---
+
+## Reglas de la capa dashboard (datasets real y sintetico)
+
+Reglas aplicadas al construir los datasets `dashboard_real` y
+`dashboard_sintetico` (esquema unificado de 42 columnas). Documentadas en el
+diccionario de datos definitivo; aqui se catalogan con ID estable.
+
+### R-014 - Deduplicacion de archivos fuente redundantes
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-014 |
+| **Columnas afectadas** | Todas (nivel archivo) |
+| **Descripcion** | Excluye copias redundantes de planillas fuente: nombres con codificacion corrupta (mojibake) o sufijo de copia `(n)`. Se conserva el archivo de nombre limpio. |
+| **Justificacion** | Evitar contar dos veces las mismas iniciativas de 2025. |
+| **Tipo** | descarte |
+| **Estado** | implementada |
+
+### R-015 - Universo de iniciativas reales
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-015 |
+| **Columnas afectadas** | Todas (nivel fila) |
+| **Descripcion** | Solo se consideran filas con identificador poblado (codigo o nombre de iniciativa). Las filas de plantilla vacias se excluyen. Un archivo sin anio determinable (61 iniciativas centralizadas) se excluye completo para no inventarle periodo. |
+| **Justificacion** | Las plantillas traen filas vacias que arrastrarian la cobertura hacia abajo de forma artificial. |
+| **Tipo** | descarte |
+| **Estado** | implementada |
+
+### R-016 - Normalizacion multivalor por tipo de campo
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-016 |
+| **Columnas afectadas** | competencia_sello, competencia_generica, dominios_disciplinares |
+| **Descripcion** | Unifica el separador a `; ` con estrategia por tipo de campo: etiquetas cortas se dividen por `;` y `,`; frases largas respetan comillas y comas internas (no se dividen por coma simple); dominios ademas dividen por el patron `., ` del formato 2024 y tratan `No aplica` como sin dato. |
+| **Justificacion** | Los separadores de origen varian por anio y campo; dividir frases por coma simple las fragmentaria. Extiende R-012/R-013 a la capa dashboard. |
+| **Tipo** | normalizacion |
+| **Estado** | implementada |
+
+### R-017 - Evidencia a SI/NO
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-017 |
+| **Columnas afectadas** | evidencia |
+| **Descripcion** | Unifica tres formatos de origen a SI/NO: el estado de evidencia 2022-2023 (COMPLETO e INCOMPLETO -> SI, SIN EVIDENCIA -> NO, incluyendo variantes sucias), y los campos SI/NO y Si/No directos de 2024 y 2025. |
+| **Justificacion** | Filtro obligatorio del dashboard; INCOMPLETO cuenta como SI porque existe evidencia aunque incompleta. |
+| **Tipo** | normalizacion |
+| **Estado** | implementada |
+
+### R-018 - Modalidad a vocabulario controlado
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-018 |
+| **Columnas afectadas** | modalidad |
+| **Descripcion** | Normaliza variantes de origen (PRESENCIAL/ONLINE/HIBRIDO vs Presencial/Online/Hibrida) a `Presencial` / `Online` / `Hibrida`. |
+| **Justificacion** | Filtro obligatorio; sin normalizar, un mismo valor apareceria como categorias distintas segun el anio. |
+| **Tipo** | normalizacion |
+| **Estado** | implementada |
+
+### R-019 - Semestre de ejecucion a 1S/2S/Anual
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-019 |
+| **Columnas afectadas** | semestre |
+| **Descripcion** | Normaliza PRIMERO/`Primer semestre` -> `1S`, SEGUNDO/`Segundo semestre` -> `2S`, ANUAL -> `Anual`. Excluye explicitamente el semestre de la catedra asociada, que es otro concepto. Extiende R-005 a la capa dashboard. |
+| **Justificacion** | Filtro obligatorio y nivel micro de los graficos. |
+| **Tipo** | normalizacion |
+| **Estado** | implementada |
+
+### R-020 - Primer numero en conteos sucios
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-020 |
+| **Columnas afectadas** | cantidad_act_planificadas, cantidad_act_ejecutadas |
+| **Descripcion** | En celdas con mas de un valor (por ejemplo `2; 3`) se toma el primer numero que aparece. |
+| **Justificacion** | Perder la celda completa por un separador espurio seria peor que la aproximacion; casos poco frecuentes. |
+| **Tipo** | correccion |
+| **Estado** | implementada |
+
+### R-021 - Marcado de incidencias
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | R-021 |
+| **Columnas afectadas** | requiere_revision, motivo_revision (nuevas) |
+| **Descripcion** | Marca `requiere_revision = True` cuando la iniciativa tiene evidencia faltante (NO o vacia), no tiene codigo, o no tiene facultad; `motivo_revision` concatena las razones con `; ` y queda vacia donde no hay incidencia. Misma regla en ambos datasets. |
+| **Justificacion** | Tabla de incidencias solicitada para derivar casos al equipo de Front-End. |
+| **Tipo** | correccion |
 | **Estado** | implementada |
 
 ---
